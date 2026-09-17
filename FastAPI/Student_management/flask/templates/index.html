@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management Portal | Premium Dashboard</title>
+    <meta name="description" content="Manage students, enrollment details, grades, and academic performance with a modern interface.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <!-- Animated Atmospheric Background -->
+    <div class="app-background">
+        <div class="ambient-orb orb-1"></div>
+        <div class="ambient-orb orb-2"></div>
+        <div class="ambient-orb orb-3"></div>
+    </div>
+
+    <!-- Main Application Shell -->
+    <div class="app-container">
+        <!-- Top Navigation / Header -->
+        <header class="app-header">
+            <div class="brand-group">
+                <div class="brand-icon">
+                    <i class="ph-duotone ph-student"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>Student Portal</h1>
+                    <span class="brand-subtitle">Academic Records &amp; Performance Manager</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="db-badge">
+                    <span class="status-dot online"></span>
+                    <span>SQLite Connected</span>
+                </div>
+                <button id="addStudentBtn" class="btn btn-primary" onclick="openAddModal()">
+                    <i class="ph-bold ph-plus"></i>
+                    <span>Add Student</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI Metrics Grid -->
+        <section class="metrics-grid" aria-label="Summary Statistics">
+            <div class="metric-card">
+                <div class="metric-icon-wrap icon-blue">
+                    <i class="ph-duotone ph-users-four"></i>
+                </div>
+                <div class="metric-content">
+                    <span class="metric-label">Total Enrolled</span>
+                    <h2 class="metric-value" id="statTotalStudents">0</h2>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon-wrap icon-emerald">
+                    <i class="ph-duotone ph-chart-line-up"></i>
+                </div>
+                <div class="metric-content">
+                    <span class="metric-label">Average Score</span>
+                    <h2 class="metric-value" id="statAvgMarks">0.0%</h2>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon-wrap icon-amber">
+                    <i class="ph-duotone ph-trophy"></i>
+                </div>
+                <div class="metric-content">
+                    <span class="metric-label">Top Performer</span>
+                    <h2 class="metric-value" id="statTopMarks">0.0</h2>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon-wrap icon-purple">
+                    <i class="ph-duotone ph-seal-check"></i>
+                </div>
+                <div class="metric-content">
+                    <span class="metric-label">Pass Rate (&ge; 40%)</span>
+                    <h2 class="metric-value" id="statPassRate">0.0%</h2>
+                </div>
+            </div>
+        </section>
+
+        <!-- Control Toolbar: Search, Filters, Sort -->
+        <section class="toolbar-section">
+            <div class="search-box">
+                <i class="ph-bold ph-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search by name, roll number, or class..."
+                    oninput="handleSearch(this.value)" autocomplete="off">
+                <button id="clearSearchBtn" class="clear-search-btn" onclick="clearSearch()" style="display: none;" title="Clear search">
+                    <i class="ph ph-x-circle"></i>
+                </button>
+            </div>
+
+            <div class="filter-controls">
+                <div class="select-wrapper">
+                    <i class="ph ph-funnel select-icon"></i>
+                    <select id="classFilter" onchange="handleClassFilter(this.value)">
+                        <option value="all">All Classes</option>
+                    </select>
+                </div>
+
+                <div class="select-wrapper">
+                    <i class="ph ph-arrows-down-up select-icon"></i>
+                    <select id="sortBy" onchange="handleSort(this.value)">
+                        <option value="id-asc">Sort: ID (Low &rarr; High)</option>
+                        <option value="id-desc">Sort: ID (High &rarr; Low)</option>
+                        <option value="name-asc">Sort: Name (A &rarr; Z)</option>
+                        <option value="marks-desc">Sort: Marks (High &rarr; Low)</option>
+                        <option value="marks-asc">Sort: Marks (Low &rarr; High)</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-secondary icon-only" onclick="fetchStudents()" title="Refresh Data">
+                    <i class="ph ph-arrow-clockwise"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Main Directory Table Card -->
+        <main class="table-card">
+            <div class="table-header-info">
+                <div class="table-title">
+                    <h3>Student Directory</h3>
+                    <span id="recordCountBadge" class="badge badge-neutral">Loading...</span>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table" id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 90px;">ID</th>
+                            <th>Student</th>
+                            <th>Roll Number</th>
+                            <th>Class</th>
+                            <th>Marks / Score</th>
+                            <th>Grade Status</th>
+                            <th style="text-align: right; width: 120px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <!-- Loaded via JavaScript -->
+                    </tbody>
+                </table>
+
+                <!-- Empty State View -->
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-icon-wrap">
+                        <i class="ph-duotone ph-folder-open"></i>
+                    </div>
+                    <h4>No Students Found</h4>
+                    <p id="emptyMessage">There are no student records matching your current criteria.</p>
+                    <button class="btn btn-primary btn-sm" onclick="openAddModal()">
+                        <i class="ph-bold ph-plus"></i>
+                        <span>Add First Student</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add / Edit Student Modal -->
+    <div id="studentModal" class="modal-backdrop" onclick="handleBackdropClick(event)">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <div class="modal-icon" id="modalHeaderIcon">
+                        <i class="ph-duotone ph-user-plus"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalTitle">Add New Student</h3>
+                        <p id="modalSubtitle">Fill in the details to enroll a new student.</p>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="closeModal()" title="Close dialog">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+
+            <form id="studentForm" onsubmit="handleFormSubmit(event)" novalidate>
+                <div class="modal-body">
+                    <div id="modalAlert" class="modal-alert" style="display: none;"></div>
+
+                    <div class="form-row form-grid-2">
+                        <div class="form-group">
+                            <label for="studentId">Student ID <span class="required">*</span></label>
+                            <div class="input-icon-field">
+                                <i class="ph ph-hash"></i>
+                                <input type="number" id="studentId" name="studentId" placeholder="e.g. 101" min="1" required>
+                            </div>
+                            <span class="field-hint">Unique numerical identifier</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="rollNumber">Roll Number <span class="required">*</span></label>
+                            <div class="input-icon-field">
+                                <i class="ph ph-identification-badge"></i>
+                                <input type="text" id="rollNumber" name="rollNumber" placeholder="e.g. 2026-BCA-01" required>
+                            </div>
+                            <span class="field-hint">Unique academic roll code</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="studentName">Full Name <span class="required">*</span></label>
+                        <div class="input-icon-field">
+                            <i class="ph ph-user"></i>
+                            <input type="text" id="studentName" name="studentName" placeholder="e.g. Aditi Rao" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row form-grid-2">
+                        <div class="form-group">
+                            <label for="studentClass">Class / Department <span class="required">*</span></label>
+                            <div class="input-icon-field">
+                                <i class="ph ph-graduation-cap"></i>
+                                <input type="text" id="studentClass" name="studentClass" placeholder="e.g. BCA, B.Tech, MCA" list="classDatalist" required>
+                                <datalist id="classDatalist">
+                                    <option value="BCA">
+                                    <option value="B.Tech">
+                                    <option value="MCA">
+                                    <option value="B.Sc CS">
+                                    <option value="BBA">
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="studentMarks">Marks (0 - 100) <span class="required">*</span></label>
+                            <div class="input-icon-field">
+                                <i class="ph ph-percent"></i>
+                                <input type="number" id="studentMarks" name="studentMarks" placeholder="e.g. 85.5" min="0" max="100" step="0.1" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveStudentBtn">
+                        <i class="ph-bold ph-check"></i>
+                        <span id="saveBtnText">Save Student</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal-backdrop" onclick="handleDeleteBackdropClick(event)">
+        <div class="modal-dialog modal-dialog-sm">
+            <div class="modal-header">
+                <div class="modal-icon icon-danger">
+                    <i class="ph-duotone ph-warning-circle"></i>
+                </div>
+                <div>
+                    <h3>Confirm Deletion</h3>
+                    <p>This action cannot be undone.</p>
+                </div>
+            </div>
+            <div class="modal-body">
+                <p id="deleteMessage">Are you sure you want to remove this student record?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDelete()">
+                    <i class="ph-bold ph-trash"></i>
+                    <span>Delete Record</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script>
+        // API Endpoint (relative so works with any host or port)
+        const API_URL = '/api/students';
+
+        let studentsData = [];
+        let isEditMode = false;
+        let activeEditId = null;
+        let pendingDeleteId = null;
+
+        // Fetch all students from backend
+        async function fetchStudents() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Failed to retrieve students.');
+                const result = await response.json();
+                studentsData = result.data || [];
+                updateStats(result.stats);
+                populateClassFilter(result.stats.classes || []);
+                renderTable();
+            } catch (err) {
+                console.error('API Fetch Error:', err);
+                showToast('Unable to connect to Student API. Ensure server is running.', 'error');
+            }
+        }
+
+        // Update top KPI cards
+        function updateStats(stats) {
+            if (!stats) return;
+            document.getElementById('statTotalStudents').textContent = stats.total_students ?? 0;
+            document.getElementById('statAvgMarks').textContent = `${(stats.avg_marks ?? 0).toFixed(1)}%`;
+            document.getElementById('statTopMarks').textContent = stats.max_marks !== undefined ? stats.max_marks : '0';
+            document.getElementById('statPassRate').textContent = `${(stats.pass_rate ?? 0).toFixed(1)}%`;
+        }
+
+        // Populate class dropdown dynamically
+        function populateClassFilter(classes) {
+            const select = document.getElementById('classFilter');
+            const currentVal = select.value;
+            select.innerHTML = '<option value="all">All Classes</option>';
+            classes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                select.appendChild(opt);
+            });
+            if (classes.includes(currentVal)) {
+                select.value = currentVal;
+            }
+        }
+
+        // Determine grade badge details based on marks
+        function getGradeInfo(marks) {
+            const m = parseFloat(marks) || 0;
+            if (m >= 75) {
+                return { label: 'Distinction', cssClass: 'badge-emerald', icon: 'ph-star' };
+            } else if (m >= 60) {
+                return { label: 'First Class', cssClass: 'badge-blue', icon: 'ph-medal' };
+            } else if (m >= 40) {
+                return { label: 'Passed', cssClass: 'badge-amber', icon: 'ph-check-circle' };
+            } else {
+                return { label: 'Needs Help', cssClass: 'badge-rose', icon: 'ph-warning' };
+            }
+        }
+
+        // Generate avatar initials and deterministic background gradient
+        function getAvatarMeta(name) {
+            const clean = (name || 'Student').trim();
+            const parts = clean.split(' ').filter(Boolean);
+            let initials = 'ST';
+            if (parts.length >= 2) {
+                initials = (parts[0][0] + parts[1][0]).toUpperCase();
+            } else if (parts.length === 1) {
+                initials = parts[0].substring(0, 2).toUpperCase();
+            }
+
+            const gradients = [
+                'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                'linear-gradient(135deg, #06b6d4, #3b82f6)',
+                'linear-gradient(135deg, #10b981, #059669)',
+                'linear-gradient(135deg, #f59e0b, #ea580c)',
+                'linear-gradient(135deg, #ec4899, #8b5cf6)',
+                'linear-gradient(135deg, #14b8a6, #0284c7)'
+            ];
+            let hash = 0;
+            for (let i = 0; i < clean.length; i++) hash += clean.charCodeAt(i);
+            const gradient = gradients[hash % gradients.length];
+            return { initials, gradient };
+        }
+
+        // Render data rows in table
+        function renderTable() {
+            const tbody = document.getElementById('studentTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const recordCountBadge = document.getElementById('recordCountBadge');
+            const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+            const classVal = document.getElementById('classFilter').value;
+            const sortVal = document.getElementById('sortBy').value;
+
+            // Filter logic
+            let filtered = studentsData.filter(student => {
+                const matchesSearch = !searchVal || 
+                    student.name.toLowerCase().includes(searchVal) ||
+                    student.roll_number.toLowerCase().includes(searchVal) ||
+                    student.student_class.toLowerCase().includes(searchVal) ||
+                    String(student.id).includes(searchVal);
+
+                const matchesClass = (classVal === 'all') || (student.student_class === classVal);
+                return matchesSearch && matchesClass;
+            });
+
+            // Sorting logic
+            filtered.sort((a, b) => {
+                switch (sortVal) {
+                    case 'id-asc': return a.id - b.id;
+                    case 'id-desc': return b.id - a.id;
+                    case 'name-asc': return a.name.localeCompare(b.name);
+                    case 'marks-desc': return b.marks - a.marks;
+                    case 'marks-asc': return a.marks - b.marks;
+                    default: return a.id - b.id;
+                }
+            });
+
+            recordCountBadge.textContent = `${filtered.length} of ${studentsData.length} records`;
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.style.display = 'flex';
+                document.getElementById('studentsTable').style.display = 'none';
+                document.getElementById('emptyMessage').textContent = searchVal || classVal !== 'all' 
+                    ? 'No students match your selected filters.' 
+                    : 'No student records in the database yet.';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            document.getElementById('studentsTable').style.display = 'table';
+
+            filtered.forEach(student => {
+                const tr = document.createElement('tr');
+                tr.className = 'table-row-animate';
+
+                const avatar = getAvatarMeta(student.name);
+                const grade = getGradeInfo(student.marks);
+                const marksPercent = Math.min(100, Math.max(0, student.marks));
+
+                tr.innerHTML = `
+                    <td>
+                        <span class="id-pill">#${student.id}</span>
+                    </td>
+                    <td>
+                        <div class="student-cell">
+                            <div class="avatar" style="background: ${avatar.gradient};">
+                                ${avatar.initials}
+                            </div>
+                            <div class="student-info">
+                                <span class="student-name">${escapeHtml(student.name)}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="roll-pill">
+                            <i class="ph ph-identification-badge"></i>
+                            ${escapeHtml(student.roll_number)}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="class-badge">${escapeHtml(student.student_class)}</span>
+                    </td>
+                    <td>
+                        <div class="marks-container">
+                            <div class="marks-top">
+                                <span class="marks-number">${student.marks.toFixed(1)}</span>
+                                <span class="marks-total">/ 100</span>
+                            </div>
+                            <div class="marks-progress-bg">
+                                <div class="marks-progress-fill ${grade.cssClass}" style="width: ${marksPercent}%;"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="grade-badge ${grade.cssClass}">
+                            <i class="ph-bold ${grade.icon}"></i>
+                            ${grade.label}
+                        </span>
+                    </td>
+                    <td style="text-align: right;">
+                        <div class="action-btn-group">
+                            <button class="action-btn edit-btn" onclick="openEditModal(${student.id})" title="Edit Student">
+                                <i class="ph-bold ph-pencil-simple"></i>
+                            </button>
+                            <button class="action-btn delete-btn" onclick="openDeleteModal(${student.id}, '${escapeJs(student.name)}')" title="Delete Student">
+                                <i class="ph-bold ph-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Search & Filter event handlers
+        function handleSearch(val) {
+            document.getElementById('clearSearchBtn').style.display = val.length > 0 ? 'block' : 'none';
+            renderTable();
+        }
+
+        function clearSearch() {
+            const input = document.getElementById('searchInput');
+            input.value = '';
+            document.getElementById('clearSearchBtn').style.display = 'none';
+            renderTable();
+        }
+
+        function handleClassFilter() {
+            renderTable();
+        }
+
+        function handleSort() {
+            renderTable();
+        }
+
+        // Modal Controls
+        function openAddModal() {
+            isEditMode = false;
+            activeEditId = null;
+            document.getElementById('studentForm').reset();
+            document.getElementById('studentId').disabled = false;
+            document.getElementById('modalTitle').textContent = 'Add New Student';
+            document.getElementById('modalSubtitle').textContent = 'Fill in the details to enroll a new student.';
+            document.getElementById('modalHeaderIcon').className = 'modal-icon icon-primary';
+            document.getElementById('modalHeaderIcon').innerHTML = '<i class="ph-duotone ph-user-plus"></i>';
+            document.getElementById('saveBtnText').textContent = 'Create Student';
+            hideModalAlert();
+
+            // Suggest next available ID
+            if (studentsData.length > 0) {
+                const maxId = Math.max(...studentsData.map(s => s.id));
+                document.getElementById('studentId').value = maxId + 1;
+            } else {
+                document.getElementById('studentId').value = 1;
+            }
+
+            document.getElementById('studentModal').classList.add('open');
+            setTimeout(() => document.getElementById('studentName').focus(), 150);
+        }
+
+        function openEditModal(id) {
+            const student = studentsData.find(s => s.id === id);
+            if (!student) return;
+
+            isEditMode = true;
+            activeEditId = id;
+            document.getElementById('studentId').value = student.id;
+            document.getElementById('studentId').disabled = true; // ID cannot be altered on edit
+            document.getElementById('studentName').value = student.name;
+            document.getElementById('rollNumber').value = student.roll_number;
+            document.getElementById('studentClass').value = student.student_class;
+            document.getElementById('studentMarks').value = student.marks;
+
+            document.getElementById('modalTitle').textContent = 'Edit Student Details';
+            document.getElementById('modalSubtitle').textContent = `Updating information for Student #${student.id}.`;
+            document.getElementById('modalHeaderIcon').className = 'modal-icon icon-blue';
+            document.getElementById('modalHeaderIcon').innerHTML = '<i class="ph-duotone ph-pencil-simple-line"></i>';
+            document.getElementById('saveBtnText').textContent = 'Update Student';
+            hideModalAlert();
+
+            document.getElementById('studentModal').classList.add('open');
+            setTimeout(() => document.getElementById('studentName').focus(), 150);
+        }
+
+        function closeModal() {
+            document.getElementById('studentModal').classList.remove('open');
+        }
+
+        function handleBackdropClick(e) {
+            if (e.target.id === 'studentModal') closeModal();
+        }
+
+        function showModalAlert(message) {
+            const alert = document.getElementById('modalAlert');
+            alert.textContent = message;
+            alert.style.display = 'block';
+        }
+
+        function hideModalAlert() {
+            const alert = document.getElementById('modalAlert');
+            alert.style.display = 'none';
+        }
+
+        // Form Submission (Create or Update)
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            hideModalAlert();
+
+            const studentId = parseInt(document.getElementById('studentId').value, 10);
+            const name = document.getElementById('studentName').value.trim();
+            const roll_number = document.getElementById('rollNumber').value.trim();
+            const student_class = document.getElementById('studentClass').value.trim();
+            const marksRaw = document.getElementById('studentMarks').value;
+
+            if (isNaN(studentId) || studentId <= 0) {
+                showModalAlert('Please enter a valid positive numerical Student ID.');
+                return;
+            }
+            if (!name) {
+                showModalAlert('Student full name is required.');
+                return;
+            }
+            if (!roll_number) {
+                showModalAlert('Roll number is required.');
+                return;
+            }
+            if (!student_class) {
+                showModalAlert('Class / Department is required.');
+                return;
+            }
+            const marks = parseFloat(marksRaw);
+            if (isNaN(marks) || marks < 0 || marks > 100) {
+                showModalAlert('Marks must be a number between 0 and 100.');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveStudentBtn');
+            saveBtn.disabled = true;
+
+            try {
+                if (isEditMode) {
+                    // PUT /api/students/<id>
+                    const res = await fetch(`${API_URL}/${activeEditId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name,
+                            roll_number,
+                            student_class,
+                            marks
+                        })
+                    });
+                    const json = await res.json();
+                    if (!res.ok) {
+                        showModalAlert(json.error || 'Failed to update student.');
+                        saveBtn.disabled = false;
+                        return;
+                    }
+                    showToast(`Updated student: ${name}`, 'success');
+                } else {
+                    // POST /api/students
+                    const res = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            id: studentId,
+                            name,
+                            roll_number,
+                            student_class,
+                            marks
+                        })
+                    });
+                    const json = await res.json();
+                    if (!res.ok) {
+                        showModalAlert(json.error || 'Failed to create student.');
+                        saveBtn.disabled = false;
+                        return;
+                    }
+                    showToast(`Enrolled new student: ${name}`, 'success');
+                }
+
+                closeModal();
+                await fetchStudents();
+            } catch (err) {
+                console.error(err);
+                showModalAlert('Network error occurred while saving student.');
+            } finally {
+                saveBtn.disabled = false;
+            }
+        }
+
+        // Delete Confirmation Modal Controls
+        function openDeleteModal(id, name) {
+            pendingDeleteId = id;
+            document.getElementById('deleteMessage').textContent = `Are you sure you want to permanently delete ${name} (ID: #${id})?`;
+            document.getElementById('deleteModal').classList.add('open');
+        }
+
+        function closeDeleteModal() {
+            pendingDeleteId = null;
+            document.getElementById('deleteModal').classList.remove('open');
+        }
+
+        function handleDeleteBackdropClick(e) {
+            if (e.target.id === 'deleteModal') closeDeleteModal();
+        }
+
+        async function confirmDelete() {
+            if (!pendingDeleteId) return;
+            const deleteBtn = document.getElementById('confirmDeleteBtn');
+            deleteBtn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}/${pendingDeleteId}`, {
+                    method: 'DELETE'
+                });
+                if (!res.ok) throw new Error('Failed to delete student.');
+                showToast(`Student #${pendingDeleteId} removed successfully.`, 'success');
+                closeDeleteModal();
+                await fetchStudents();
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to delete student record.', 'error');
+            } finally {
+                deleteBtn.disabled = false;
+            }
+        }
+
+        // Toast Feedback System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+
+            let icon = 'ph-info';
+            if (type === 'success') icon = 'ph-check-circle';
+            if (type === 'error') icon = 'ph-x-circle';
+
+            toast.innerHTML = `
+                <i class="ph-fill ${icon} toast-icon"></i>
+                <span class="toast-message">${escapeHtml(message)}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Helper utilities to prevent XSS
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function escapeJs(str) {
+            if (!str) return '';
+            return String(str).replace(/'/g, "\\'");
+        }
+
+        // Initialize application on page load
+        document.addEventListener('DOMContentLoaded', fetchStudents);
+    </script>
+</body>
+
+</html>

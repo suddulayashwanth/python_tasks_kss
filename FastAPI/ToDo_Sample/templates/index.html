@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToDo | Premium Experience</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="app-background"></div>
+    <div class="glass-container">
+        <header>
+            <h1>My Tasks</h1>
+            <p>Manage your daily goals with elegance.</p>
+        </header>
+
+        <main>
+            <div class="input-panel">
+                <div class="input-wrapper">
+                    <i class="ph ph-plus-circle icon"></i>
+                    <input type="text" id="taskInput" placeholder="Add a new task..."
+                        onkeypress="handleKeyPress(event)">
+                </div>
+                <button class="add-btn" onclick="addTask()">Add</button>
+            </div>
+
+            <div class="filter-panel">
+                <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">All</button>
+                <button class="filter-btn" data-filter="active" onclick="setFilter('active')">Active</button>
+                <button class="filter-btn" data-filter="completed" onclick="setFilter('completed')">Completed</button>
+            </div>
+
+            <div class="tasks-wrapper">
+                <ul id="taskList"></ul>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <i class="ph-duotone ph-check-circle"></i>
+                    <p>All caught up!</p>
+                </div>
+            </div>
+        </main>
+        <div id="statusMessage"></div>
+    </div>
+
+    <!-- Edit Modal Dialog -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Edit Task</h2>
+            <input type="text" id="editTaskInput">
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="closeEditModal()">Cancel</button>
+                <button class="save-btn" onclick="saveEdit()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = 'http://localhost:5000/api/todos';
+        let allTasks = [];
+        let currentFilter = 'all'; // all, active, completed
+        let editingTaskId = null;
+
+        async function fetchTasks() {
+            try {
+                const response = await fetch(apiUrl);
+                allTasks = await response.json();
+                renderTasks();
+            } catch (error) {
+                console.error("API error", error);
+                document.getElementById('statusMessage').textContent = 'Server connection failed.';
+            }
+        }
+
+        function renderTasks() {
+            const list = document.getElementById('taskList');
+            const emptyState = document.getElementById('emptyState');
+            list.innerHTML = '';
+
+            let filteredTasks = allTasks;
+            if (currentFilter === 'active') {
+                filteredTasks = allTasks.filter(t => !t.completed);
+            } else if (currentFilter === 'completed') {
+                filteredTasks = allTasks.filter(t => t.completed);
+            }
+
+            if (filteredTasks.length === 0) {
+                emptyState.style.display = 'flex';
+            } else {
+                emptyState.style.display = 'none';
+                filteredTasks.forEach(task => {
+                    const li = document.createElement('li');
+                    li.className = task.completed ? 'task-item completed' : 'task-item';
+
+                    // Checkbox
+                    const checkBtn = document.createElement('button');
+                    checkBtn.className = 'icon-btn check-btn';
+                    checkBtn.innerHTML = task.completed ? '<i class="ph-fill ph-check-circle"></i>' : '<i class="ph ph-circle"></i>';
+                    checkBtn.onclick = () => toggleTaskCompletion(task.id, !task.completed);
+
+                    // Text
+                    const taskText = document.createElement('span');
+                    taskText.className = 'task-text';
+                    taskText.textContent = task.task;
+                    taskText.onclick = () => toggleTaskCompletion(task.id, !task.completed);
+
+                    // Actions Container
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'task-actions';
+
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'icon-btn edit-btn';
+                    editBtn.innerHTML = '<i class="ph ph-pencil-simple"></i>';
+                    editBtn.onclick = () => openEditModal(task.id, task.task);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'icon-btn delete-btn';
+                    deleteBtn.innerHTML = '<i class="ph ph-trash"></i>';
+                    deleteBtn.onclick = () => deleteTask(task.id);
+
+                    actionsDiv.appendChild(editBtn);
+                    actionsDiv.appendChild(deleteBtn);
+
+                    li.appendChild(checkBtn);
+                    li.appendChild(taskText);
+                    li.appendChild(actionsDiv);
+
+                    list.appendChild(li);
+                });
+            }
+        }
+
+        async function addTask() {
+            const input = document.getElementById('taskInput');
+            const task = input.value.trim();
+            if (!task) return;
+
+            try {
+                await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task })
+                });
+                input.value = '';
+                fetchTasks();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') addTask();
+        }
+
+        async function toggleTaskCompletion(id, completed) {
+            try {
+                await fetch(`${apiUrl}/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ completed })
+                });
+                fetchTasks();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function deleteTask(id) {
+            try {
+                await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
+                fetchTasks();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            renderTasks();
+        }
+
+        function openEditModal(id, currentText) {
+            editingTaskId = id;
+            document.getElementById('editTaskInput').value = currentText;
+            document.getElementById('editModal').classList.add('visible');
+            setTimeout(() => document.getElementById('editTaskInput').focus(), 100);
+        }
+
+        function closeEditModal() {
+            editingTaskId = null;
+            document.getElementById('editModal').classList.remove('visible');
+        }
+
+        async function saveEdit() {
+            if (!editingTaskId) return;
+            const newText = document.getElementById('editTaskInput').value.trim();
+            if (newText) {
+                try {
+                    await fetch(`${apiUrl}/${editingTaskId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ task: newText })
+                    });
+                    fetchTasks();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            closeEditModal();
+        }
+
+        fetchTasks();
+    </script>
+</body>
+
+</html>
