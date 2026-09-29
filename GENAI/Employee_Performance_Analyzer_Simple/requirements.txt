@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-dotenv
+google-genai
+pymongo
+sqlalchemy
+python-jose[cryptography]
+python-multipart
+pydantic
+scikit-learn
+pandas
+pypdf
+python-docx
