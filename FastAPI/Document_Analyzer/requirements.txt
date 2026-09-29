@@ -1,3 +1,0 @@
-google-genai
-pymongo
-python-dotenv
